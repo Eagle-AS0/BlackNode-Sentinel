@@ -1,14 +1,14 @@
-<a id="readme-top"></a>
-
-<!-- PROJECT SHIELDS -->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-
-<br />
-<div align="center">
+<!-- MARKDOWN LINKS & IMAGES -->
+[contributors-shield]: https://img.shields.io/github/contributors/Eagle-AS0/BlackNode-Sentinel.svg?style=for-the-badge
+[contributors-url]: https://github.com/Eagle-AS0/BlackNode-Sentinel/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/Eagle-AS0/BlackNode-Sentinel.svg?style=for-the-badge
+[forks-url]: https://github.com/Eagle-AS0/BlackNode-Sentinel/network/members
+[stars-shield]: https://img.shields.io/github/stars/Eagle-AS0/BlackNode-Sentinel.svg?style=for-the-badge
+[stars-url]: https://github.com/Eagle-AS0/BlackNode-Sentinel/stargazers
+[issues-shield]: https://img.shields.io/github/issues/Eagle-AS0/BlackNode-Sentinel.svg?style=for-the-badge
+[issues-url]: https://github.com/Eagle-AS0/BlackNode-Sentinel/issues
+[license-shield]: https://img.shields.io/github/license/Eagle-AS0/BlackNode-Sentinel.svg?style=for-the-badge
+[license-url]: https://github.com/Eagle-AS0/BlackNode-Sentinel/blob/main/LICENSE
 
   <h1 align="center">BlackNode Sentinel</h1>
 
