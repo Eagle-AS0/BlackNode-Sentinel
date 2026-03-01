@@ -1,4 +1,3 @@
-![Stars](https://img.shields.io/github/stars/Eagle-AS0/BlackNode-Sentinel?style=for-the-badge)
 
   <h1 align="center">BlackNode Sentinel</h1>
 
