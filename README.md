@@ -18,7 +18,7 @@
 
 ---
 
-## 📌 About The Project
+## 📌 About The Project :
 
 BlackNode Sentinel is an AI-powered Runtime Application Self-Protection (RASP) platform built as a SaaS security solution.
 
