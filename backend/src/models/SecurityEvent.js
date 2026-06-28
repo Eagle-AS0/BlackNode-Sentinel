@@ -14,7 +14,7 @@ const securityEventSchema = new mongoose.Schema(
     },
     eventType: {
       type: String,
-      enum: ['sql_injection', 'xss', 'path_traversal', 'command_injection', 'suspicious', 'anomaly'],
+      enum: ['sql_injection', 'xss', 'path_traversal', 'command_injection', 'brute_force', 'ddos', 'port_scan', 'malware', 'suspicious', 'anomaly'],
       required: true,
     },
     severity: {
