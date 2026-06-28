@@ -40,6 +40,7 @@ const authService = {
         id: user._id,
         email: user.email,
         role: user.role,
+        organization: org._id,
       });
 
       logger.info(`User registered: ${email}`);
@@ -75,6 +76,7 @@ const authService = {
         id: user._id,
         email: user.email,
         role: user.role,
+        organization: user.organization,
       });
 
       logger.info(`User logged in: ${email}`);
