@@ -60,29 +60,33 @@ threat_detector = Model()
 
 def extract_features(payload: PayloadAnalysis) -> dict:
     """Extract features from payload for threat detection"""
-    value = payload.value or ""
+    value = (payload.value or "") + " " + (payload.path or "")
     
-    # SQL Injection patterns
-    sql_keywords = ['select', 'insert', 'update', 'delete', 'drop', 'union', 'or', 'and', '--', ';']
-    sql_score = sum(1 for keyword in sql_keywords if keyword.lower() in value.lower()) / len(sql_keywords)
-    
+    # SQL Injection patterns — keyword + syntax combo
+    sql_keywords = ['select', 'insert', 'update', 'delete', 'drop', 'union', 'or', 'and', '--', ';', '1=1', "1='1'", 'or 1', 'sleep(', 'benchmark(', 'information_schema']
+    sql_hits = sum(1 for kw in sql_keywords if kw.lower() in value.lower())
+    sql_score = min(sql_hits / 3.0, 1.0)  # 3 hits = max score
+
     # XSS patterns
-    xss_patterns = ['<script', 'javascript:', 'onerror=', 'onload=', '<iframe', 'alert(']
-    xss_score = sum(1 for pattern in xss_patterns if pattern.lower() in value.lower()) / len(xss_patterns)
-    
+    xss_patterns = ['<script', 'javascript:', 'onerror=', 'onload=', '<iframe', 'alert(', '<img', 'document.cookie', 'eval(', 'innerHTML']
+    xss_hits = sum(1 for p in xss_patterns if p.lower() in value.lower())
+    xss_score = min(xss_hits / 2.0, 1.0)  # 2 hits = max
+
     # Command Injection patterns
-    cmd_patterns = [';', '|', '&', '$', '`', '\n']
-    cmd_score = sum(1 for pattern in cmd_patterns if pattern in value) / len(cmd_patterns)
-    
-    # Path Traversal patterns
-    path_patterns = ['../', '..\\', '%2e%2e', 'file://', '/etc/', '/windows/']
-    path_score = sum(1 for pattern in path_patterns if pattern.lower() in value.lower()) / len(path_patterns)
-    
+    cmd_patterns = ['|', '&', '`', '$(', 'nc ', 'curl ', 'wget ', 'bash', '/bin/', 'sh -c']
+    cmd_hits = sum(1 for p in cmd_patterns if p.lower() in value.lower())
+    cmd_score = min(cmd_hits / 2.0, 1.0)
+
+    # Path Traversal patterns — also handle URL encoding
+    path_patterns = ['../', '..\\', '%2e%2e', 'file://', '/etc/', '/windows/', '%2f', '%5c']
+    path_hits = sum(1 for p in path_patterns if p.lower() in value.lower())
+    path_score = min(path_hits / 2.0, 1.0)
+
     # Encoding detection
     encoding_score = 0
     if '%' in value or '&#' in value or '\\x' in value.lower():
         encoding_score = 0.3
-    
+
     return {
         'sql_score': sql_score,
         'xss_score': xss_score,
@@ -122,7 +126,7 @@ def classify_threat(features: dict) -> tuple:
     else:
         attack_type = 'suspicious'
     
-    is_malicious = threat_score > 0.5
+    is_malicious = threat_score > 0.2
     confidence = min(threat_score * 1.2, 1.0) if is_malicious else max(1.0 - threat_score, 0.0)
     
     return threat_score, attack_type, is_malicious, confidence
