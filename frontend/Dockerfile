@@ -1,9 +1,9 @@
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 ARG REACT_APP_API_URL=http://localhost:5000/api
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
