@@ -12,6 +12,7 @@ const logger = require('./config/logger');
 const authRoutes = require('./routes/auth');
 const applicationRoutes = require('./routes/applications');
 const eventRoutes = require('./routes/events');
+const scanRoutes = require('./routes/scan');
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/scan', scanRoutes);
 
 // 404 Handler
 app.use((req, res) => {
