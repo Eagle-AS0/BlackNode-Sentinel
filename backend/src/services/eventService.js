@@ -61,7 +61,9 @@ const eventService = {
 
   async getEvents(organizationId, filters = {}) {
     try {
-      const query = { organization: organizationId };
+      const mongoose = require('mongoose');
+      const orgId = new mongoose.Types.ObjectId(organizationId);
+      const query = { organization: orgId };
       
       if (filters.applicationId) query.application = filters.applicationId;
       if (filters.severity) query.severity = filters.severity;
@@ -72,10 +74,11 @@ const eventService = {
         if (filters.dateTo) query.createdAt.$lte = new Date(filters.dateTo);
       }
 
-      const skip = filters.page ? (filters.page - 1) * (filters.limit || 10) : 0;
+      const skip = filters.page ? (filters.page - 1) * (filters.limit || 20) : 0;
       const events = await SecurityEvent.find(query)
+        .populate('application', 'name url')
         .skip(skip)
-        .limit(filters.limit || 10)
+        .limit(filters.limit || 50)
         .sort({ createdAt: -1 });
 
       const total = await SecurityEvent.countDocuments(query);
@@ -84,9 +87,9 @@ const eventService = {
         data: events,
         pagination: {
           page: filters.page || 1,
-          limit: filters.limit || 10,
+          limit: filters.limit || 50,
           total,
-          pages: Math.ceil(total / (filters.limit || 10)),
+          pages: Math.ceil(total / (filters.limit || 50)),
         },
       };
     } catch (error) {
@@ -97,8 +100,10 @@ const eventService = {
 
   async getEventStats(organizationId) {
     try {
+      const mongoose = require('mongoose');
+      const orgId = new mongoose.Types.ObjectId(organizationId);
       const stats = await SecurityEvent.aggregate([
-        { $match: { organization: organizationId } },
+        { $match: { organization: orgId } },
         {
           $facet: {
             bySeverity: [

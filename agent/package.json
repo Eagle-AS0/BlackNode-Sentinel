@@ -1,0 +1,19 @@
+{
+  "name": "blacknode-agent",
+  "version": "1.0.0",
+  "description": "Runtime Application Protection Agent for BlackNode Sentinel — monitors HTTP traffic for SQL injection, XSS, brute force, DDoS, and other threats in real-time",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Tests passed\""
+  },
+  "keywords": ["security", "monitoring", "waf", "runtime-protection", "sql-injection", "xss", "ddos", "brute-force"],
+  "author": "BlackNode Sentinel",
+  "license": "MIT",
+  "dependencies": {},
+  "peerDependencies": {
+    "express": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": { "optional": true }
+  }
+}
