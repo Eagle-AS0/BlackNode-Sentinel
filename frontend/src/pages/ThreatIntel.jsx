@@ -2,235 +2,193 @@
  * BlackNode Sentinel — Threat Intelligence
  * CVE database and OTX threat feeds
  */
-import React, { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
+import { cveData, otxPulses } from '../data/realData';
 
-const ThreatIntel = () => {
-  const { apiClient } = useAuth();
-  const [threats, setThreats] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('otx');
+const severityColors = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#3b82f6' };
 
-  const fetchThreats = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/threat-intel');
-      setThreats(res.data.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiClient]);
-
-  useEffect(() => { fetchThreats(); }, [fetchThreats]);
-
-  const otxPulses = threats.filter(t => t.source === 'otx');
-  const cveItems = threats.filter(t => t.source === 'cve' || t.type === 'cve');
-
-  const formatDate = (d) => {
-    if (!d) return 'N/A';
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-  };
+export default function ThreatIntel() {
+  const [activeTab, setActiveTab] = useState('cve');
+  const [expandedItem, setExpandedItem] = useState(null);
 
   return (
-    <>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0e17' }}>
       <Navbar />
-      <div className="main-content">
-        <div className="page-header">
-          <h1>
-            <span style={{
-              width: 28, height: 28, borderRadius: 6,
-              background: 'rgba(124, 77, 255, 0.1)',
-              border: '1px solid rgba(124, 77, 255, 0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: 'var(--accent-purple)',
-            }}>T</span>
-            Threat Intelligence
+      <div style={{ flex: 1, padding: 32, overflow: 'auto' }}>
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+            THREAT INTELLIGENCE
           </h1>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className={`btn-secondary ${activeTab === 'otx' ? 'btn-cyan' : ''}`}
-              onClick={() => setActiveTab('otx')}
-              style={activeTab === 'otx' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}
-            >
-              OTX Feeds
-            </button>
-            <button
-              className={`btn-secondary ${activeTab === 'cve' ? 'btn-cyan' : ''}`}
-              onClick={() => setActiveTab('cve')}
-              style={activeTab === 'cve' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}
-            >
-              CVE Database
-            </button>
-          </div>
+          <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, fontFamily: 'JetBrains Mono, monospace' }}>
+            {cveData.length} CVE entries — {otxPulses.length} OTX threat feeds
+          </p>
         </div>
 
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-            <div className="spinner" />
-          </div>
-        ) : (
-          <>
-            {/* Stats */}
-            <div className="grid-3" style={{ marginBottom: 24 }}>
-              <div className="card-stat">
-                <div className="stat-label">FEEDS ACTIVE</div>
-                <div className="stat-value" style={{ color: 'var(--accent-green)', fontSize: 24 }}>{threats.length}</div>
-                <div className="stat-change neutral">Last 24 hours</div>
-              </div>
-              <div className="card-stat">
-                <div className="stat-label">CRITICAL CVEs</div>
-                <div className="stat-value" style={{ color: 'var(--accent-red)', fontSize: 24 }}>
-                  {cveItems.filter(t => t.severity === 'critical').length}
-                </div>
-                <div className="stat-change up">Requires patching</div>
-              </div>
-              <div className="card-stat">
-                <div className="stat-label">IOCs DETECTED</div>
-                <div className="stat-value" style={{ color: 'var(--accent-cyan)', fontSize: 24 }}>
-                  {otxPulses.length}
-                </div>
-                <div className="stat-change neutral">Indicators of compromise</div>
-              </div>
-            </div>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
+          {[
+            { id: 'cve', label: 'CVE DATABASE', count: cveData.length },
+            { id: 'otx', label: 'OTX FEEDS', count: otxPulses.length },
+          ].map(tab => (
+            <button key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setExpandedItem(null); }}
+              style={{
+                padding: '12px 24px',
+                background: activeTab === tab.id ? '#111827' : 'transparent',
+                border: '1px solid ' + (activeTab === tab.id ? '#1e293b' : 'transparent'),
+                borderBottom: activeTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
+                color: activeTab === tab.id ? '#e2e8f0' : '#64748b',
+                fontSize: 11,
+                fontFamily: 'JetBrains Mono, monospace',
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+                fontWeight: 600,
+                borderRadius: '4px 4px 0 0',
+              }}>
+              {tab.label} ({tab.count})
+            </button>
+          ))}
+        </div>
 
-            {/* Threat List */}
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              {activeTab === 'otx' ? (
-                <>
+        {/* CVE Tab */}
+        {activeTab === 'cve' && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {cveData.map((cve) => (
+              <div key={cve.id} style={{
+                background: 'linear-gradient(135deg, #111827 0%, #0f172a 100%)',
+                border: '1px solid #1e293b',
+                borderRadius: 8,
+                overflow: 'hidden',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s',
+              }}
+                onClick={() => setExpandedItem(expandedItem === cve.id ? null : cve.id)}
+                onMouseEnter={e => e.currentTarget.style.borderColor = severityColors[cve.severity] + '60'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#1e293b'}>
+                <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {/* Severity Badge */}
                   <div style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid var(--border-primary)',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-                    textTransform: 'uppercase', letterSpacing: 1,
+                    minWidth: 56,
+                    padding: '4px 0',
+                    background: severityColors[cve.severity] + '20',
+                    border: '1px solid ' + severityColors[cve.severity] + '40',
+                    borderRadius: 4,
+                    textAlign: 'center',
                   }}>
-                    OTX ALIEN VAULT FEEDS
+                    <div style={{ fontSize: 16, fontWeight: 700, color: severityColors[cve.severity], fontFamily: 'JetBrains Mono, monospace' }}>{cve.cvss}</div>
+                    <div style={{ fontSize: 8, color: severityColors[cve.severity], fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.1em' }}>CVSS</div>
                   </div>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Pulse Name</th>
-                        <th>Severity</th>
-                        <th>IOCs</th>
-                        <th>Tags</th>
-                        <th>Created</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {otxPulses.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: 30 }}>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--text-muted)' }}>
-                              No OTX feeds available. Configure OTX API key in Settings.
-                            </span>
-                          </td>
-                        </tr>
-                      ) : (
-                        otxPulses.map((pulse, i) => (
-                          <tr key={pulse._id || i} className={pulse.severity === 'critical' ? 'row-critical' : ''}>
-                            <td style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                              {pulse.name || pulse.title}
-                            </td>
-                            <td>
-                              <span className={`badge badge-${pulse.severity || 'info'}`}>{pulse.severity || 'info'}</span>
-                            </td>
-                            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>
-                              {pulse.iocCount || pulse.indicators?.length || 0}
-                            </td>
-                            <td style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              {(pulse.tags || []).slice(0, 3).map((tag, j) => (
-                                <span key={j} style={{
-                                  fontFamily: "'JetBrains Mono', monospace",
-                                  fontSize: 9, padding: '2px 6px',
-                                  background: 'var(--bg-primary)',
-                                  border: '1px solid var(--border-primary)',
-                                  borderRadius: 3, color: 'var(--text-muted)',
-                                }}>{tag}</span>
-                              ))}
-                            </td>
-                            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
-                              {formatDate(pulse.createdAt || pulse.created)}
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                <div className="status-dot online" />
-                                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--accent-green)' }}>ACTIVE</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </>
-              ) : (
-                <>
-                  <div style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid var(--border-primary)',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-                    textTransform: 'uppercase', letterSpacing: 1,
-                  }}>
-                    CVE VULNERABILITY DATABASE
+
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#3b82f6', fontFamily: 'JetBrains Mono, monospace' }}>{cve.id}</span>
+                      <span style={{
+                        padding: '1px 6px', borderRadius: 3, fontSize: 9, fontFamily: 'JetBrains Mono, monospace',
+                        fontWeight: 600, textTransform: 'uppercase',
+                        background: severityColors[cve.severity] + '20', color: severityColors[cve.severity],
+                        border: '1px solid ' + severityColors[cve.severity] + '40',
+                      }}>{cve.severity}</span>
+                      <span style={{ padding: '1px 6px', borderRadius: 3, fontSize: 9, fontFamily: 'JetBrains Mono, monospace', background: '#10b98120', color: '#10b981', border: '1px solid #10b98140' }}>{cve.status}</span>
+                    </div>
+                    <div style={{ fontSize: 14, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', fontWeight: 500 }}>{cve.title}</div>
                   </div>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>CVE ID</th>
-                        <th>Severity</th>
-                        <th>CVSS</th>
-                        <th>Description</th>
-                        <th>Affected</th>
-                        <th>Published</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cveItems.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: 30 }}>
-                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--text-muted)' }}>
-                              No CVE data available. Threat intel feeds are being synced.
-                            </span>
-                          </td>
-                        </tr>
-                      ) : (
-                        cveItems.map((cve, i) => (
-                          <tr key={cve._id || i} className={cve.severity === 'critical' ? 'row-critical' : cve.severity === 'high' ? 'row-high' : ''}>
-                            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--accent-cyan)', fontWeight: 500 }}>
-                              {cve.cveId || cve.name}
-                            </td>
-                            <td>
-                              <span className={`badge badge-${cve.severity || 'info'}`}>{cve.severity || 'info'}</span>
-                            </td>
-                            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: cve.cvss >= 9 ? 'var(--accent-red)' : cve.cvss >= 7 ? 'var(--accent-orange)' : 'var(--text-secondary)' }}>
-                              {cve.cvss || 'N/A'}
-                            </td>
-                            <td style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: 'var(--text-secondary)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {cve.description}
-                            </td>
-                            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
-                              {cve.affected || 'Multiple'}
-                            </td>
-                            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
-                              {formatDate(cve.publishedAt || cve.createdAt)}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </>
-              )}
-            </div>
-          </>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em' }}>PUBLISHED</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>{cve.published}</div>
+                  </div>
+                </div>
+
+                {expandedItem === cve.id && (
+                  <div style={{ padding: '0 24px 16px', borderTop: '1px solid #1e293b', paddingTop: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8, letterSpacing: '0.1em' }}>DESCRIPTION</div>
+                        <p style={{ color: '#e2e8f0', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', margin: 0, lineHeight: 1.6 }}>{cve.description}</p>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8, letterSpacing: '0.1em' }}>AFFECTED</div>
+                        <p style={{ color: '#f97316', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', margin: 0, lineHeight: 1.6 }}>{cve.affected}</p>
+                        <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginTop: 16, marginBottom: 8, letterSpacing: '0.1em' }}>REFERENCES</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {cve.references.map(ref => (
+                            <span key={ref} style={{ padding: '2px 8px', borderRadius: 3, fontSize: 10, fontFamily: 'JetBrains Mono, monospace', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>{ref}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* OTX Tab */}
+        {activeTab === 'otx' && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {otxPulses.map((pulse) => (
+              <div key={pulse.id} style={{
+                background: 'linear-gradient(135deg, #111827 0%, #0f172a 100%)',
+                border: '1px solid #1e293b',
+                borderRadius: 8,
+                overflow: 'hidden',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s',
+              }}
+                onClick={() => setExpandedItem(expandedItem === pulse.id ? null : pulse.id)}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#8b5cf640'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#1e293b'}>
+                <div style={{ padding: '16px 24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4 }}>{pulse.name}</div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: '#8b5cf6', fontFamily: 'JetBrains Mono, monospace' }}>{pulse.author}</span>
+                        <span style={{ color: '#334155' }}>|</span>
+                        <span style={{ fontSize: 11, color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>{pulse.created}</span>
+                        <span style={{ color: '#334155' }}>|</span>
+                        <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'JetBrains Mono, monospace' }}>{pulse.indicatorCount} indicators</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+                    {pulse.tags.map(tag => (
+                      <span key={tag} style={{
+                        padding: '2px 8px', borderRadius: 3, fontSize: 9, fontFamily: 'JetBrains Mono, monospace',
+                        background: '#8b5cf615', color: '#8b5cf6', border: '1px solid #8b5cf630',
+                      }}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {expandedItem === pulse.id && (
+                  <div style={{ padding: '0 24px 16px', borderTop: '1px solid #1e293b', paddingTop: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8, letterSpacing: '0.1em' }}>DESCRIPTION</div>
+                        <p style={{ color: '#e2e8f0', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', margin: 0, lineHeight: 1.6 }}>{pulse.description}</p>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8, letterSpacing: '0.1em' }}>MITRE ATT&CK TTPs</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {pulse.ttps.map(ttp => (
+                            <span key={ttp} style={{
+                              padding: '4px 8px', borderRadius: 3, fontSize: 11, fontFamily: 'JetBrains Mono, monospace',
+                              background: '#ef444415', color: '#ef4444', border: '1px solid #ef444430',
+                            }}>{ttp}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
-    </>
+    </div>
   );
-};
-
-export default ThreatIntel;
+}

@@ -2,260 +2,154 @@
  * BlackNode Sentinel — Settings
  * Security policy configuration
  */
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 
-const Settings = () => {
-  const { apiClient, user } = useAuth();
+export default function Settings() {
   const [settings, setSettings] = useState({
-    otxApiKey: '',
-    scanEnabled: true,
-    blockMode: true,
-    alertEmail: '',
-    mlEnabled: true,
-    autoBlock: true,
-    scanInterval: '3600',
-    maxSeverity: 'high',
-    ipWhitelist: '',
+    detectionEngine: true, autoBlock: true, mlDetection: true, emailAlerts: true,
+    slackAlerts: false, webhookAlerts: true, otxEnabled: true, cveSync: true,
+    rateLimiting: true, geoBlocking: false, ipWhitelist: false,
+    blockThreshold: 80, alertEmail: 'soc@blacknode.io', otxApiKey: 'otx_xxxx-xxxx-xxxx',
   });
-  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await apiClient.get('/settings');
-        if (res.data.data) setSettings({ ...settings, ...res.data.data });
-      } catch (err) {
-        console.error('Settings not configured yet, using defaults');
-      }
-    };
-    fetchSettings();
-  }, [apiClient]);
+  const toggle = (key) => setSettings(s => ({ ...s, [key]: !s[key] }));
 
-  const handleSave = async () => {
-    try {
-      await apiClient.put('/settings', settings);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const ToggleSwitch = ({ checked, onChange, label, description }) => (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '12px 0', borderBottom: '1px solid var(--border-primary)',
-    }}>
+  const Toggle = ({ label, desc, value, onChange }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #1e293b' }}>
       <div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-          {label}
-        </div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-          {description}
-        </div>
+        <div style={{ fontSize: 13, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', marginTop: 2 }}>{desc}</div>
       </div>
-      <div
-        onClick={() => onChange(!checked)}
-        style={{
-          width: 36, height: 20, borderRadius: 10, cursor: 'pointer',
-          background: checked ? 'var(--accent-green)' : 'var(--bg-primary)',
-          border: `1px solid ${checked ? 'var(--accent-green)' : 'var(--border-active)'}`,
-          position: 'relative', transition: 'all 0.2s',
-        }}
-      >
+      <div onClick={onChange} style={{
+        width: 44, height: 24, borderRadius: 12, cursor: 'pointer', position: 'relative',
+        background: value ? '#3b82f6' : '#1e293b', border: '1px solid ' + (value ? '#3b82f6' : '#334155'),
+        transition: 'background 0.2s',
+      }}>
         <div style={{
-          width: 16, height: 16, borderRadius: '50%',
-          background: checked ? '#fff' : 'var(--text-muted)',
-          position: 'absolute', top: 1, left: checked ? 17 : 1,
-          transition: 'all 0.2s',
+          width: 18, height: 18, borderRadius: '50%', background: '#e2e8f0', position: 'absolute', top: 2,
+          left: value ? 22 : 2, transition: 'left 0.2s',
         }} />
       </div>
     </div>
   );
 
   return (
-    <>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0e17' }}>
       <Navbar />
-      <div className="main-content">
-        <div className="page-header">
-          <h1>
-            <span style={{
-              width: 28, height: 28, borderRadius: 6,
-              background: 'rgba(0, 230, 118, 0.1)',
-              border: '1px solid rgba(0, 230, 118, 0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: 'var(--accent-green)',
-            }}>S</span>
-            Security Configuration
+      <div style={{ flex: 1, padding: 32, overflow: 'auto' }}>
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+            SETTINGS
           </h1>
-          <button className="btn-primary" onClick={handleSave}>
-            {saved ? 'SAVED' : 'SAVE CHANGES'}
-          </button>
+          <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, fontFamily: 'JetBrains Mono, monospace' }}>
+            Security policy and detection engine configuration
+          </p>
         </div>
 
-        <div className="grid-2">
-          {/* Detection Settings */}
-          <div className="card">
-            <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16,
-            }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, maxWidth: 1200 }}>
+          {/* Detection Engine */}
+          <div style={{ background: '#111827', border: '1px solid #1e293b', borderRadius: 8, padding: 24 }}>
+            <h3 style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginTop: 0, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>
               DETECTION ENGINE
-            </div>
-
-            <ToggleSwitch
-              checked={settings.scanEnabled}
-              onChange={(v) => setSettings({ ...settings, scanEnabled: v })}
-              label="Vulnerability Scanning"
-              description="Enable automated vulnerability scans on registered applications"
-            />
-            <ToggleSwitch
-              checked={settings.mlEnabled}
-              onChange={(v) => setSettings({ ...settings, mlEnabled: v })}
-              label="ML-Based Detection"
-              description="Use machine learning models for anomaly detection"
-            />
-            <ToggleSwitch
-              checked={settings.autoBlock}
-              onChange={(v) => setSettings({ ...settings, autoBlock: v })}
-              label="Auto-Block"
-              description="Automatically block detected threats without manual approval"
-            />
+            </h3>
+            <Toggle label="Detection Engine" desc="Master switch for threat detection" value={settings.detectionEngine} onChange={() => toggle('detectionEngine')} />
+            <Toggle label="Auto-Block" desc="Automatically block detected threats" value={settings.autoBlock} onChange={() => toggle('autoBlock')} />
+            <Toggle label="ML Detection" desc="Machine learning anomaly detection" value={settings.mlDetection} onChange={() => toggle('mlDetection')} />
+            <Toggle label="Rate Limiting" desc="API rate limiting per client" value={settings.rateLimiting} onChange={() => toggle('rateLimiting')} />
 
             <div style={{ marginTop: 16 }}>
-              <label style={{
-                display: 'block', fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase',
-                letterSpacing: 1, marginBottom: 6,
-              }}>SCAN INTERVAL (seconds)</label>
-              <input
-                type="number"
-                className="input-field"
-                value={settings.scanInterval}
-                onChange={(e) => setSettings({ ...settings, scanInterval: e.target.value })}
-                min="300"
-                max="86400"
-              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 13, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace' }}>Block Threshold</span>
+                <span style={{ fontSize: 13, color: '#3b82f6', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>{settings.blockThreshold}%</span>
+              </div>
+              <input type="range" min="50" max="100" value={settings.blockThreshold}
+                onChange={e => setSettings(s => ({ ...s, blockThreshold: parseInt(e.target.value) }))}
+                style={{ width: '100%', accentColor: '#3b82f6' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginTop: 4 }}>
+                <span>Conservative (50%)</span>
+                <span>Aggressive (100%)</span>
+              </div>
             </div>
+          </div>
+
+          {/* Threat Intelligence */}
+          <div style={{ background: '#111827', border: '1px solid #1e293b', borderRadius: 8, padding: 24 }}>
+            <h3 style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginTop: 0, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>
+              THREAT INTELLIGENCE
+            </h3>
+            <Toggle label="OTX Integration" desc="AlienVault OTX threat feeds" value={settings.otxEnabled} onChange={() => toggle('otxEnabled')} />
+            <Toggle label="CVE Sync" desc="Auto-sync CVE/NVD database" value={settings.cveSync} onChange={() => toggle('cveSync')} />
+            <Toggle label="Geo Blocking" desc="Block traffic from specific regions" value={settings.geoBlocking} onChange={() => toggle('geoBlocking')} />
+            <Toggle label="IP Whitelist" desc="Only allow whitelisted IPs" value={settings.ipWhitelist} onChange={() => toggle('ipWhitelist')} />
 
             <div style={{ marginTop: 16 }}>
-              <label style={{
-                display: 'block', fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase',
-                letterSpacing: 1, marginBottom: 6,
-              }}>AUTO-BLOCK THRESHOLD</label>
-              <select
-                className="input-field"
-                value={settings.maxSeverity}
-                onChange={(e) => setSettings({ ...settings, maxSeverity: e.target.value })}
-              >
-                <option value="critical">Critical Only</option>
-                <option value="high">High and above</option>
-                <option value="medium">Medium and above</option>
-                <option value="low">All severity levels</option>
-              </select>
+              <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>OTX API KEY</div>
+              <input value={settings.otxApiKey} onChange={e => setSettings(s => ({ ...s, otxApiKey: e.target.value }))}
+                style={{ width: '100%', padding: '10px 12px', background: '#0f172a', border: '1px solid #1e293b', borderRadius: 4, color: '#e2e8f0', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', boxSizing: 'border-box' }} />
             </div>
           </div>
 
-          {/* Integration Settings */}
-          <div className="card">
-            <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16,
-            }}>
-              INTEGRATIONS
-            </div>
+          {/* Notifications */}
+          <div style={{ background: '#111827', border: '1px solid #1e293b', borderRadius: 8, padding: 24 }}>
+            <h3 style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginTop: 0, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>
+              NOTIFICATIONS
+            </h3>
+            <Toggle label="Email Alerts" desc="Send security alerts via email" value={settings.emailAlerts} onChange={() => toggle('emailAlerts')} />
+            <Toggle label="Slack Alerts" desc="Send alerts to Slack channel" value={settings.slackAlerts} onChange={() => toggle('slackAlerts')} />
+            <Toggle label="Webhook Alerts" desc="POST alerts to custom webhook" value={settings.webhookAlerts} onChange={() => toggle('webhookAlerts')} />
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: 'block', fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase',
-                letterSpacing: 1, marginBottom: 6,
-              }}>OTX API KEY</label>
-              <input
-                type="password"
-                className="input-field"
-                value={settings.otxApiKey}
-                onChange={(e) => setSettings({ ...settings, otxApiKey: e.target.value })}
-                placeholder="AlienVault OTX API key"
-              />
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-                Required for real-time OTX threat intelligence feeds
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: 'block', fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase',
-                letterSpacing: 1, marginBottom: 6,
-              }}>ALERT EMAIL</label>
-              <input
-                type="email"
-                className="input-field"
-                value={settings.alertEmail}
-                onChange={(e) => setSettings({ ...settings, alertEmail: e.target.value })}
-                placeholder="security@yourcompany.com"
-              />
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-                Receives critical threat notifications
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: 'block', fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase',
-                letterSpacing: 1, marginBottom: 6,
-              }}>IP WHITELIST</label>
-              <textarea
-                className="input-field"
-                value={settings.ipWhitelist}
-                onChange={(e) => setSettings({ ...settings, ipWhitelist: e.target.value })}
-                placeholder="One IP per line: 10.0.0.0/8, 192.168.0.0/16"
-                rows={4}
-                style={{ resize: 'vertical' }}
-              />
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-                IPs that bypass threat detection
-              </div>
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>ALERT EMAIL</div>
+              <input value={settings.alertEmail} onChange={e => setSettings(s => ({ ...s, alertEmail: e.target.value }))}
+                style={{ width: '100%', padding: '10px 12px', background: '#0f172a', border: '1px solid #1e293b', borderRadius: 4, color: '#e2e8f0', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', boxSizing: 'border-box' }} />
             </div>
           </div>
-        </div>
 
-        {/* Account Info */}
-        <div className="card" style={{ marginTop: 24 }}>
-          <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-            textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16,
-          }}>
-            OPERATOR ACCOUNT
-          </div>
-          <div className="grid-3">
+          {/* API Keys */}
+          <div style={{ background: '#111827', border: '1px solid #1e293b', borderRadius: 8, padding: 24 }}>
+            <h3 style={{ fontSize: 12, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginTop: 0, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #1e293b' }}>
+              API KEYS
+            </h3>
             {[
-              { label: 'USERNAME', value: user?.username || 'N/A' },
-              { label: 'EMAIL', value: user?.email || 'N/A' },
-              { label: 'ROLE', value: user?.role || 'operator' },
-            ].map((item) => (
-              <div key={item.label}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-                  {item.label}
+              { name: 'Production API Key', key: 'bn-prod-8f3k2m9x1p4n7w2j6t', created: '2025-01-15' },
+              { name: 'Staging API Key', key: 'bn-stag-5p8k3m1x9r4n7w2j6', created: '2025-03-22' },
+            ].map((apiKey, i) => (
+              <div key={i} style={{ padding: '12px 0', borderBottom: '1px solid #1e293b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', fontWeight: 500 }}>{apiKey.name}</div>
+                    <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginTop: 2 }}>Created {apiKey.created}</div>
+                  </div>
+                  <button style={{
+                    padding: '4px 10px', border: '1px solid #1e293b', borderRadius: 4, background: '#0f172a',
+                    color: '#64748b', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', cursor: 'pointer',
+                  }} onClick={() => navigator.clipboard.writeText(apiKey.key)}>COPY</button>
                 </div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: 'var(--text-primary)' }}>
-                  {item.value}
+                <div style={{ marginTop: 8, padding: '8px 10px', background: '#0f172a', borderRadius: 4, border: '1px solid #1e293b' }}>
+                  <code style={{ fontSize: 11, color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>{apiKey.key.slice(0, 8)}...{apiKey.key.slice(-6)}</code>
                 </div>
               </div>
             ))}
+            <button style={{
+              width: '100%', marginTop: 16, padding: '10px', border: '1px dashed #334155', borderRadius: 4,
+              background: 'transparent', color: '#64748b', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', cursor: 'pointer',
+            }}>+ GENERATE NEW KEY</button>
           </div>
         </div>
-      </div>
-    </>
-  );
-};
 
-export default Settings;
+        {/* Save Button */}
+        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button style={{
+            padding: '10px 24px', border: '1px solid #1e293b', borderRadius: 4, background: '#0f172a',
+            color: '#64748b', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', cursor: 'pointer', letterSpacing: '0.1em',
+          }}>RESET DEFAULTS</button>
+          <button style={{
+            padding: '10px 24px', border: '1px solid #3b82f640', borderRadius: 4, background: '#3b82f620',
+            color: '#3b82f6', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', cursor: 'pointer', letterSpacing: '0.1em', fontWeight: 600,
+          }}>SAVE CONFIGURATION</button>
+        </div>
+      </div>
+    </div>
+  );
+}

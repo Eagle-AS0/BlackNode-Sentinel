@@ -1,242 +1,146 @@
 /**
  * BlackNode Sentinel — Events
- * Security event log with forensic details
+ * Security event forensics log
  */
-import React, { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
+import { events } from '../data/realData';
 
-const Events = () => {
-  const { apiClient } = useAuth();
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ severity: '', eventType: '', blocked: '' });
+const severityColors = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#3b82f6', info: '#6b7280' };
+const typeLabels = { sql_injection: 'SQL Injection', xss: 'XSS', brute_force: 'Brute Force', ddos: 'DDoS', command_injection: 'Command Injection', path_traversal: 'Path Traversal', malware: 'Malware', anomaly: 'Anomaly', port_scan: 'Port Scan' };
+
+export default function Events() {
   const [expandedEvent, setExpandedEvent] = useState(null);
+  const [filterSeverity, setFilterSeverity] = useState('all');
+  const [filterType, setFilterType] = useState('all');
 
-  const fetchEvents = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filters.severity) params.append('severity', filters.severity);
-      if (filters.eventType) params.append('eventType', filters.eventType);
-      if (filters.blocked) params.append('blocked', filters.blocked);
-      const res = await apiClient.get(`/events?${params.toString()}`);
-      setEvents(res.data.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiClient, filters]);
+  const filtered = events.filter(e => {
+    if (filterSeverity !== 'all' && e.severity !== filterSeverity) return false;
+    if (filterType !== 'all' && e.type !== filterType) return false;
+    return true;
+  });
 
-  useEffect(() => { fetchEvents(); }, [fetchEvents]);
-
-  const formatTime = (d) => {
-    const date = new Date(d);
-    return date.toLocaleString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
-
-  const getRowClass = (sev) => {
-    if (sev === 'critical') return 'row-critical';
-    if (sev === 'high') return 'row-high';
-    if (sev === 'medium') return 'row-medium';
-    return '';
-  };
+  const uniqueTypes = [...new Set(events.map(e => e.type))];
 
   return (
-    <>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0e17' }}>
       <Navbar />
-      <div className="main-content">
-        <div className="page-header">
-          <h1>
-            <span style={{
-              width: 28, height: 28, borderRadius: 6,
-              background: 'rgba(255, 23, 68, 0.1)',
-              border: '1px solid rgba(255, 23, 68, 0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: 'var(--accent-red)',
-            }}>E</span>
-            Security Event Log
-          </h1>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
-            {events.length} events recorded
+      <div style={{ flex: 1, padding: 32, overflow: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+              SECURITY EVENTS
+            </h1>
+            <p style={{ color: '#64748b', fontSize: 13, marginTop: 8, fontFamily: 'JetBrains Mono, monospace' }}>
+              {filtered.length} events {filterSeverity !== 'all' || filterType !== 'all' ? '(filtered)' : ''} — full forensic detail
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}
+              style={{ padding: '8px 12px', background: '#111827', border: '1px solid #1e293b', borderRadius: 4, color: '#e2e8f0', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}>
+              <option value="all">ALL SEVERITIES</option>
+              {['critical', 'high', 'medium', 'low', 'info'].map(s => (
+                <option key={s} value={s}>{s.toUpperCase()}</option>
+              ))}
+            </select>
+            <select value={filterType} onChange={e => setFilterType(e.target.value)}
+              style={{ padding: '8px 12px', background: '#111827', border: '1px solid #1e293b', borderRadius: 4, color: '#e2e8f0', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}>
+              <option value="all">ALL TYPES</option>
+              {uniqueTypes.map(t => (
+                <option key={t} value={t}>{(typeLabels[t] || t).toUpperCase()}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Events Table */}
         <div style={{
-          display: 'flex', gap: 10, marginBottom: 20, padding: '12px 16px',
-          background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 6,
+          background: 'linear-gradient(135deg, #111827 0%, #0f172a 100%)',
+          border: '1px solid #1e293b',
+          borderRadius: 8,
+          overflow: 'hidden',
         }}>
-          <select className="input-field" style={{ width: 160 }} value={filters.severity}
-            onChange={(e) => setFilters({ ...filters, severity: e.target.value })}>
-            <option value="">All Severities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-            <option value="info">Info</option>
-          </select>
-          <select className="input-field" style={{ width: 180 }} value={filters.eventType}
-            onChange={(e) => setFilters({ ...filters, eventType: e.target.value })}>
-            <option value="">All Types</option>
-            <option value="sql_injection">SQL Injection</option>
-            <option value="xss">XSS</option>
-            <option value="brute_force">Brute Force</option>
-            <option value="path_traversal">Path Traversal</option>
-            <option value="command_injection">Command Injection</option>
-            <option value="ddos">DDoS</option>
-            <option value="malware">Malware</option>
-            <option value="anomaly">Anomaly</option>
-            <option value="port_scan">Port Scan</option>
-          </select>
-          <select className="input-field" style={{ width: 150 }} value={filters.blocked}
-            onChange={(e) => setFilters({ ...filters, blocked: e.target.value })}>
-            <option value="">All Status</option>
-            <option value="true">Blocked</option>
-            <option value="false">Not Blocked</option>
-          </select>
-        </div>
-
-        {/* Table */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-              <div className="spinner" />
-            </div>
-          ) : events.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--text-muted)' }}>
-                No events match current filters
-              </div>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Severity</th>
-                    <th>Type</th>
-                    <th>Source IP</th>
-                    <th>Method</th>
-                    <th>Path</th>
-                    <th>Application</th>
-                    <th>Blocked</th>
-                    <th></th>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                {['ID', 'TIME', 'APPLICATION', 'TYPE', 'SEVERITY', 'SOURCE', 'METHOD', 'PATH', 'STATUS', 'ML SCORE'].map(h => (
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', fontWeight: 600 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((evt) => (
+                <React.Fragment key={evt.id}>
+                  <tr style={{
+                    borderBottom: '1px solid #0f172a',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s',
+                    background: expandedEvent === evt.id ? '#1e293b20' : 'transparent',
+                  }}
+                    onClick={() => setExpandedEvent(expandedEvent === evt.id ? null : evt.id)}
+                    onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+                    onMouseLeave={e => e.currentTarget.style.background = expandedEvent === evt.id ? '#1e293b20' : 'transparent'}>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: '#475569', fontFamily: 'JetBrains Mono, monospace' }}>{evt.id}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>{new Date(evt.timestamp).toLocaleTimeString()}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: '#e2e8f0', fontFamily: 'JetBrains Mono, monospace', fontWeight: 500 }}>{evt.app}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 10, color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace', textTransform: 'uppercase' }}>{typeLabels[evt.type]}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 4, fontSize: 10, fontFamily: 'JetBrains Mono, monospace',
+                        fontWeight: 600, textTransform: 'uppercase',
+                        background: severityColors[evt.severity] + '20', color: severityColors[evt.severity],
+                        border: '1px solid ' + severityColors[evt.severity] + '40',
+                      }}>{evt.severity}</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>{evt.ip}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 11, color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>{evt.method}</td>
+                    <td style={{ padding: '10px 12px', fontSize: 10, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{evt.path}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10,
+                        fontFamily: 'JetBrains Mono, monospace', color: evt.blocked ? '#10b981' : '#ef4444',
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: evt.blocked ? '#10b981' : '#ef4444' }} />
+                        {evt.blocked ? 'BLOCKED' : 'ALLOWED'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 40, height: 4, background: '#1e293b', borderRadius: 2 }}>
+                          <div style={{ width: evt.mlScore * 100 + '%', height: '100%', background: evt.mlScore > 0.9 ? '#ef4444' : evt.mlScore > 0.8 ? '#f97316' : '#eab308', borderRadius: 2 }} />
+                        </div>
+                        <span style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>{(evt.mlScore * 100).toFixed(0)}%</span>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {events.map((event, i) => (
-                    <React.Fragment key={event._id || i}>
-                      <tr className={getRowClass(event.severity)}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => setExpandedEvent(expandedEvent === event._id ? null : event._id)}>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {formatTime(event.createdAt)}
-                        </td>
-                        <td>
-                          <span className={`badge badge-${event.severity}`}>{event.severity}</span>
-                        </td>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-primary)', textTransform: 'uppercase' }}>
-                          {event.eventType?.replace(/_/g, ' ')}
-                        </td>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
-                          {event.source?.ip || 'N/A'}
-                        </td>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>
-                          {event.source?.method || 'N/A'}
-                        </td>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {event.source?.path || 'N/A'}
-                        </td>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>
-                          {event.application?.name || 'N/A'}
-                        </td>
-                        <td>
-                          {event.blocked ? (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <div className="status-dot online" />
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--accent-green)' }}>BLOCKED</span>
-                            </span>
-                          ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <div className="status-dot warning" />
-                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--accent-orange)' }}>LOGGED</span>
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
-                          {expandedEvent === event._id ? '[-]' : '[+]'}
-                        </td>
-                      </tr>
-                      {expandedEvent === event._id && (
-                        <tr>
-                          <td colSpan={9} style={{ padding: 0 }}>
-                            <div style={{
-                              padding: 16, background: 'var(--bg-primary)',
-                              borderTop: '1px solid var(--border-primary)',
-                            }}>
-                              <div className="grid-2" style={{ gap: 16 }}>
-                                <div>
-                                  <div style={{
-                                    fontFamily: "'JetBrains Mono', monospace",
-                                    fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
-                                    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
-                                  }}>DESCRIPTION</div>
-                                  <div style={{
-                                    fontFamily: "'Inter', sans-serif",
-                                    fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
-                                  }}>{event.description || 'No description available'}</div>
-                                </div>
-                                <div>
-                                  <div style={{
-                                    fontFamily: "'JetBrains Mono', monospace",
-                                    fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
-                                    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
-                                  }}>PAYLOAD</div>
-                                  {event.payload ? (
-                                    <div style={{
-                                      fontFamily: "'JetBrains Mono', monospace",
-                                      fontSize: 11, color: 'var(--accent-red)',
-                                      padding: 10, background: 'var(--bg-secondary)',
-                                      border: '1px solid var(--border-primary)', borderRadius: 4,
-                                      wordBreak: 'break-all',
-                                    }}>
-                                      <div>Parameter: <span style={{ color: 'var(--text-primary)' }}>{event.payload.parameter}</span></div>
-                                      <div style={{ marginTop: 4 }}>Value: <span style={{ color: 'var(--text-secondary)' }}>{event.payload.value}</span></div>
-                                    </div>
-                                  ) : (
-                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
-                                      No payload captured
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div style={{ marginTop: 12, display: 'flex', gap: 16 }}>
-                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
-                                  USER AGENT: <span style={{ color: 'var(--text-secondary)' }}>{event.source?.userAgent || 'N/A'}</span>
-                                </div>
-                                {event.mlScore && (
-                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
-                                    ML CONFIDENCE: <span style={{ color: 'var(--accent-cyan)' }}>{(event.mlScore * 100).toFixed(1)}%</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  {expandedEvent === evt.id && (
+                    <tr>
+                      <td colSpan={10} style={{ padding: '16px 24px', background: '#0a0e17', borderBottom: '1px solid #1e293b' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4, letterSpacing: '0.1em' }}>DESCRIPTION</div>
+                            <p style={{ color: '#e2e8f0', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', margin: 0, lineHeight: 1.6 }}>{evt.description}</p>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4, letterSpacing: '0.1em' }}>PAYLOAD</div>
+                            <code style={{ color: '#ef4444', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all', lineHeight: 1.6 }}>{evt.payload}</code>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 4, letterSpacing: '0.1em' }}>USER AGENT</div>
+                            <code style={{ color: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', lineHeight: 1.6 }}>{evt.userAgent}</code>
+                            <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginTop: 12, letterSpacing: '0.1em' }}>ML CONFIDENCE</div>
+                            <div style={{ fontSize: 24, fontWeight: 700, color: evt.mlScore > 0.9 ? '#ef4444' : '#f97316', fontFamily: 'JetBrains Mono, monospace' }}>{(evt.mlScore * 100).toFixed(1)}%</div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-    </>
+    </div>
   );
-};
-
-export default Events;
+}
