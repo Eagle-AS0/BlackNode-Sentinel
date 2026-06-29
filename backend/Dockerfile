@@ -1,25 +1,51 @@
-FROM node:20-alpine
+# ──────────────────────────────────────────────────────────────
+# BlackNode Sentinel — Backend Multi-Stage Dockerfile
+# ──────────────────────────────────────────────────────────────
+
+# ── Stage 1: Install dependencies ─────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package manifests first (leverage Docker layer caching)
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install ALL dependencies (including devDependencies for potential build steps)
+RUN npm ci
 
-# Copy source code
+# ── Stage 2: Production image ─────────────────────────────────
+FROM node:20-alpine AS production
+
+# Add curl for health checks
+RUN apk add --no-cache curl
+
+# Create non-root user
+RUN addgroup -g 1001 -S blacknode && \
+    adduser  -S blacknode -u 1001 -G blacknode
+
+WORKDIR /app
+
+# Copy package manifests
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy application source
 COPY src/ ./src/
 
 # Create logs directory
-RUN mkdir -p logs
+RUN mkdir -p logs && chown -R blacknode:blacknode /app
 
-# Expose port
-EXPOSE 5000
+# Switch to non-root user
+USER blacknode
+
+# Expose backend port
+EXPOSE 5004
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:5004/health || exit 1
 
-# Start application
-CMD ["npm", "start"]
+# Start the application
+CMD ["node", "src/index.js"]

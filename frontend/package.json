@@ -4,14 +4,15 @@
   "description": "BlackNode Sentinel - AI-Powered RASP Platform Frontend",
   "private": true,
   "dependencies": {
+    "animejs": "^3.2.2",
+    "antd": "^5.11.3",
+    "axios": "^1.6.5",
+    "date-fns": "^2.30.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "axios": "^1.6.5",
     "recharts": "^2.10.3",
-    "tailwindcss": "^3.3.6",
-    "antd": "^5.11.3",
-    "date-fns": "^2.30.0"
+    "tailwindcss": "^3.3.6"
   },
   "devDependencies": {
     "react-scripts": "5.0.1"

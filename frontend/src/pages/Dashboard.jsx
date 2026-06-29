@@ -1,161 +1,260 @@
-import React, { useEffect, useState, useCallback } from 'react';
+/**
+ * BlackNode Sentinel — Dashboard
+ * Professional security operations overview
+ */
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import Navbar from '../components/Navbar';
+import anime from 'animejs/lib/anime.es.js';
 
 const Dashboard = () => {
   const { apiClient } = useAuth();
   const [stats, setStats] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const gridRef = useRef(null);
 
   const fetchData = useCallback(async () => {
     try {
       const [statsRes, eventsRes] = await Promise.all([
         apiClient.get('/events/stats/overview'),
-        apiClient.get('/events?limit=20'),
+        apiClient.get('/events?limit=10'),
       ]);
       setStats(statsRes.data.data);
       setEvents(eventsRes.data.data || []);
-      setLastUpdate(new Date());
-    } catch (error) {
-      console.error('Dashboard fetch error:', error);
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
     } finally {
       setLoading(false);
     }
   }, [apiClient]);
 
+  useEffect(() => { fetchData(); }, [fetchData]);
+
   useEffect(() => {
-    fetchData();
-    // Auto-refresh every 5 seconds for real-time feel
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    if (!loading && gridRef.current) {
+      anime({
+        targets: gridRef.current.querySelectorAll('.stat-card'),
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 350,
+        delay: anime.stagger(60),
+        easing: 'easeOutCubic',
+      });
+    }
+  }, [loading]);
 
-  if (loading) return <><Navbar /><div className="min-h-screen bg-gray-900 text-white flex items-center justify-center"><div className="text-xl animate-pulse">Loading dashboard...</div></div></>;
+  const total = stats?.total?.[0]?.count || 0;
+  const blocked = stats?.blocked?.[0]?.count || 0;
+  const blockRate = total > 0 ? ((blocked / total) * 100).toFixed(1) : 0;
 
-  const COLORS = ['#ef4444', '#f97316', '#eab308', '#3b82f6', '#6b7280'];
+  const severityData = (stats?.bySeverity || []).map(s => ({
+    name: s._id?.toUpperCase(),
+    value: s.count,
+    color: s._id === 'critical' ? '#ff1744' : s._id === 'high' ? '#ff9100' : s._id === 'medium' ? '#ffd600' : '#448aff',
+  }));
 
-  const totalEvents = stats?.total?.[0]?.count || 0;
-  const criticalCount = stats?.bySeverity?.find(s => s._id === 'critical')?.count || 0;
-  const highCount = stats?.bySeverity?.find(s => s._id === 'high')?.count || 0;
-  const mediumCount = stats?.bySeverity?.find(s => s._id === 'medium')?.count || 0;
-  const blockedCount = stats?.blocked?.[0]?.count || 0;
-  const blockedPct = totalEvents > 0 ? Math.round((blockedCount / totalEvents) * 100) : 0;
+  const typeData = (stats?.byType || []).map(t => ({
+    name: t._id?.replace(/_/g, ' ').toUpperCase(),
+    value: t.count,
+  }));
+
+  const getSeverityRowClass = (sev) => {
+    if (sev === 'critical') return 'row-critical';
+    if (sev === 'high') return 'row-high';
+    if (sev === 'medium') return 'row-medium';
+    return '';
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="main-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="spinner" style={{ width: 32, height: 32, margin: '0 auto 12px' }} />
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--text-muted)' }}>
+              Loading threat data...
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">🛡️ Security Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-green-400 text-sm animate-pulse">● LIVE</span>
-            {lastUpdate && <span className="text-gray-500 text-xs">Updated {lastUpdate.toLocaleTimeString()}</span>}
+      <div className="main-content">
+        <div className="page-header">
+          <h1>
+            <span style={{
+              width: 28, height: 28, borderRadius: 6,
+              background: 'rgba(0, 230, 118, 0.1)',
+              border: '1px solid rgba(0, 230, 118, 0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: 'var(--accent-green)',
+            }}>D</span>
+            Security Overview
+          </h1>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="status-dot online" />
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--accent-green)' }}>
+                SYSTEMS OPERATIONAL
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
-            <h3 className="text-gray-400 text-sm mb-1">Total Events</h3>
-            <p className="text-3xl font-bold text-white">{totalEvents}</p>
+        {/* Stat Cards */}
+        <div ref={gridRef} className="grid-4" style={{ marginBottom: 24 }}>
+          <div className="card-stat stat-card" style={{ opacity: 0 }}>
+            <div className="stat-label">TOTAL EVENTS</div>
+            <div className="stat-value" style={{ color: 'var(--text-primary)' }}>{total}</div>
+            <div className="stat-change neutral">Last 24 hours</div>
           </div>
-          <div className="bg-gray-800 rounded-lg p-5 border border-red-900">
-            <h3 className="text-gray-400 text-sm mb-1">🔴 Critical</h3>
-            <p className="text-3xl font-bold text-red-500">{criticalCount}</p>
+          <div className="card-stat stat-card" style={{ opacity: 0 }}>
+            <div className="stat-label">BLOCKED</div>
+            <div className="stat-value" style={{ color: 'var(--accent-green)' }}>{blocked}</div>
+            <div className="stat-change down">{blockRate}% block rate</div>
           </div>
-          <div className="bg-gray-800 rounded-lg p-5 border border-orange-900">
-            <h3 className="text-gray-400 text-sm mb-1">🟠 High</h3>
-            <p className="text-3xl font-bold text-orange-500">{highCount}</p>
+          <div className="card-stat stat-card" style={{ opacity: 0 }}>
+            <div className="stat-label">CRITICAL</div>
+            <div className="stat-value" style={{ color: 'var(--accent-red)' }}>
+              {stats?.bySeverity?.find(s => s._id === 'critical')?.count || 0}
+            </div>
+            <div className="stat-change up">Requires attention</div>
           </div>
-          <div className="bg-gray-800 rounded-lg p-5 border border-yellow-900">
-            <h3 className="text-gray-400 text-sm mb-1">🟡 Medium</h3>
-            <p className="text-3xl font-bold text-yellow-500">{mediumCount}</p>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-5 border border-green-900">
-            <h3 className="text-gray-400 text-sm mb-1">🚫 Blocked</h3>
-            <p className="text-3xl font-bold text-green-500">{blockedCount} <span className="text-lg">({blockedPct}%)</span></p>
+          <div className="card-stat stat-card" style={{ opacity: 0 }}>
+            <div className="stat-label">ATTACK TYPES</div>
+            <div className="stat-value" style={{ color: 'var(--accent-cyan)' }}>
+              {stats?.byType?.length || 0}
+            </div>
+            <div className="stat-change neutral">Unique vectors</div>
           </div>
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-lg font-bold mb-4">Threat Distribution</h2>
-            {stats?.byType?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
+        {/* Charts Row */}
+        <div className="grid-2" style={{ marginBottom: 24 }}>
+          {/* Severity Distribution */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16,
+            }}>
+              SEVERITY DISTRIBUTION
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              <ResponsiveContainer width={140} height={140}>
                 <PieChart>
-                  <Pie data={stats.byType} dataKey="count" nameKey="_id" cx="50%" cy="50%" outerRadius={90} label={({ _id, count }) => `${_id} (${count})`}>
-                    {stats.byType.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Pie data={severityData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value" strokeWidth={0}>
+                    {severityData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
-                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <div className="h-[280px] flex items-center justify-center text-gray-500">No data yet — send traffic to your monitored apps</div>}
+              <div style={{ flex: 1 }}>
+                {severityData.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: 2, background: s.color }} />
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>
+                        {s.name}
+                      </span>
+                    </div>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: s.color }}>
+                      {s.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-lg font-bold mb-4">Severity Breakdown</h2>
-            {stats?.bySeverity?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={stats.bySeverity}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="_id" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} />
-                  <Bar dataKey="count" fill="#6366f1" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : <div className="h-[280px] flex items-center justify-center text-gray-500">No data yet</div>}
+          {/* Attack Types */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16,
+            }}>
+              ATTACK VECTORS
+            </div>
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={typeData} layout="vertical" margin={{ left: 0, right: 10 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fill: '#8888a0', fontFamily: "'JetBrains Mono', monospace" }} />
+                <Bar dataKey="value" fill="var(--accent-green)" radius={[0, 3, 3, 0]} barSize={14} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Recent Events */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 className="text-lg font-bold mb-4">🚨 Recent Security Events</h2>
-          {events.length === 0 ? (
-            <div className="text-center py-10 text-gray-500">
-              <p className="text-lg">No events detected yet</p>
-              <p className="text-sm mt-2">Install the BlackNode agent on your app to start monitoring</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-gray-700 text-gray-400">
-                  <tr>
-                    <th className="pb-3">Type</th>
-                    <th className="pb-3">Severity</th>
-                    <th className="pb-3">Description</th>
-                    <th className="pb-3">Source</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3">Time</th>
+        {/* Recent Events Table */}
+        <div className="card">
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16,
+          }}>
+            RECENT SECURITY EVENTS
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Type</th>
+                  <th>Severity</th>
+                  <th>Source</th>
+                  <th>Target</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.slice(0, 10).map((event, i) => (
+                  <tr key={event._id || i} className={getSeverityRowClass(event.severity)}>
+                    <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
+                      {new Date(event.createdAt).toLocaleTimeString()}
+                    </td>
+                    <td>
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 11, fontWeight: 500, color: 'var(--text-primary)',
+                        textTransform: 'uppercase',
+                      }}>
+                        {event.eventType?.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${event.severity}`}>{event.severity}</span>
+                    </td>
+                    <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+                      {event.source?.ip || 'N/A'}
+                    </td>
+                    <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
+                      {event.source?.path || 'N/A'}
+                    </td>
+                    <td>
+                      {event.blocked ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <div className="status-dot online" />
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--accent-green)' }}>BLOCKED</span>
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <div className="status-dot warning" />
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--accent-orange)' }}>LOGGED</span>
+                        </span>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {events.slice(0, 15).map(event => (
-                    <tr key={event._id} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
-                      <td className="py-3 font-mono text-xs">{event.eventType?.replace(/_/g, ' ')}</td>
-                      <td className="py-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          event.severity === 'critical' ? 'bg-red-900 text-red-200' :
-                          event.severity === 'high' ? 'bg-orange-900 text-orange-200' :
-                          event.severity === 'medium' ? 'bg-yellow-900 text-yellow-200' :
-                          event.severity === 'low' ? 'bg-blue-900 text-blue-200' :
-                          'bg-gray-700 text-gray-300'
-                        }`}>{event.severity}</span>
-                      </td>
-                      <td className="py-3 text-gray-300 max-w-xs truncate">{event.description || '-'}</td>
-                      <td className="py-3 font-mono text-xs text-gray-400">{event.source?.ip || 'N/A'}</td>
-                      <td className="py-3">{event.blocked ? <span className="text-red-400">🛑 Blocked</span> : <span className="text-yellow-400">📝 Logged</span>}</td>
-                      <td className="py-3 text-gray-500 text-xs">{new Date(event.createdAt).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </>

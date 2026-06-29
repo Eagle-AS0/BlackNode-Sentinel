@@ -1,91 +1,97 @@
+version: "3.8"
+
+# ──────────────────────────────────────────────────────────────
+# BlackNode Sentinel — Production Docker Compose
+# ──────────────────────────────────────────────────────────────
+# Usage:
+#   cp .env.example .env   # edit as needed
+#   docker compose up --build -d
+# ──────────────────────────────────────────────────────────────
+
 services:
-  # MongoDB Database
+  # ── MongoDB ──────────────────────────────────────────────────
   mongodb:
-    image: mongo:latest
+    image: mongo:7
     container_name: blacknode-mongodb
+    restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:-blacknode_user}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-blacknode_pass}
-      MONGO_INITDB_DATABASE: blacknode-sentinel
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-blacknode_user}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-Dev123!}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-blacknode-sentinel}
     ports:
-      - "27017:27017"
+      - "${MONGO_EXTERNAL_PORT:-27017}:27017"
     volumes:
       - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
       - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
       - blacknode-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
+      test: >
+        mongosh --quiet --eval "
+          try {
+            db.runCommand('ping').ok;
+          } catch (e) {
+            print(e);
+            process.exit(1);
+          }
+        "
+      interval: 15s
+      timeout: 10s
       retries: 5
+      start_period: 30s
 
-  # Backend API
+  # ── Backend API ──────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: blacknode-backend
+    restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "${BACKEND_EXTERNAL_PORT:-5004}:5004"
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      MONGODB_URI: mongodb://${MONGODB_USER:-blacknode_user}:${MONGODB_PASSWORD:-blacknode_pass}@mongodb:27017/blacknode-sentinel?authSource=admin
-      ML_ENGINE_URL: http://ml-engine:8000
-      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_prod}
+      NODE_ENV: ${NODE_ENV:-production}
+      BACKEND_PORT: 5004
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-blacknode_user}:${MONGO_INITDB_ROOT_PASSWORD:-Dev123!}@mongodb:27017/${MONGO_INITDB_DATABASE:-blacknode-sentinel}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      ML_ENGINE_URL: ${ML_ENGINE_URL:-}
+      ENABLE_ML_DETECTION: ${ENABLE_ML_DETECTION:-false}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
     depends_on:
       mongodb:
         condition: service_healthy
     networks:
       - blacknode-network
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    command: npm run dev
 
-  # ML Detection Engine
-  ml-engine:
-    build:
-      context: ./ml-engine
-      dockerfile: Dockerfile
-    container_name: blacknode-ml-engine
-    ports:
-      - "8000:8000"
-    environment:
-      PYTHONUNBUFFERED: 1
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-    networks:
-      - blacknode-network
-    volumes:
-      - ./ml-engine:/app
-      - ml_models:/app/models
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
-  # Frontend React App
+  # ── Frontend (Nginx + React SPA) ─────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000/api}
+        REACT_APP_API_URL: /api
     container_name: blacknode-frontend
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${FRONTEND_EXTERNAL_PORT:-3000}:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     networks:
       - blacknode-network
-    environment:
-      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000/api}
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 
+# ── Networks ──────────────────────────────────────────────────
 networks:
   blacknode-network:
     driver: bridge
+    name: blacknode-network
 
+# ── Persistent Volumes ───────────────────────────────────────
 volumes:
   mongodb_data:
-  ml_models:
+    name: blacknode-mongodb-data
+  mongodb_config:
+    name: blacknode-mongodb-config

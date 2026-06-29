@@ -1,3 +1,7 @@
+/**
+ * BlackNode Sentinel — Events
+ * Security event log with forensic details
+ */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import Navbar from '../components/Navbar';
@@ -5,99 +9,67 @@ import Navbar from '../components/Navbar';
 const Events = () => {
   const { apiClient } = useAuth();
   const [events, setEvents] = useState([]);
-  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [severityFilter, setSeverityFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const [filters, setFilters] = useState({ severity: '', eventType: '', blocked: '' });
+  const [expandedEvent, setExpandedEvent] = useState(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (severityFilter) params.severity = severityFilter;
-      if (typeFilter) params.eventType = typeFilter;
-
-      const [eventsRes, statsRes] = await Promise.all([
-        apiClient.get('/events', { params }),
-        apiClient.get('/events/stats/overview'),
-      ]);
-      setEvents(eventsRes.data.data || []);
-      setStats(statsRes.data.data);
-      setLastUpdate(new Date());
+      const params = new URLSearchParams();
+      if (filters.severity) params.append('severity', filters.severity);
+      if (filters.eventType) params.append('eventType', filters.eventType);
+      if (filters.blocked) params.append('blocked', filters.blocked);
+      const res = await apiClient.get(`/events?${params.toString()}`);
+      setEvents(res.data.data || []);
     } catch (err) {
-      console.error('Error fetching events:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [apiClient, severityFilter, typeFilter]);
+  }, [apiClient, filters]);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
-  const getSeverityColor = (s) => {
-    switch (s) {
-      case 'critical': return 'bg-red-900 text-red-200 border-red-700';
-      case 'high': return 'bg-orange-900 text-orange-200 border-orange-700';
-      case 'medium': return 'bg-yellow-900 text-yellow-200 border-yellow-700';
-      case 'low': return 'bg-blue-900 text-blue-200 border-blue-700';
-      default: return 'bg-gray-700 text-gray-200 border-gray-600';
-    }
+  const formatTime = (d) => {
+    const date = new Date(d);
+    return date.toLocaleString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
-  const getTypeIcon = (type) => {
-    const icons = {
-      sql_injection: '💉', xss: '📜', path_traversal: '🚶',
-      command_injection: '⚡', brute_force: '🔨', ddos: '🌐',
-      port_scan: '🔍', malware: '🦠', suspicious: '⚠️', anomaly: '📊',
-    };
-    return icons[type] || '⚠️';
+  const getRowClass = (sev) => {
+    if (sev === 'critical') return 'row-critical';
+    if (sev === 'high') return 'row-high';
+    if (sev === 'medium') return 'row-medium';
+    return '';
   };
-
-  const totalEvents = stats?.total?.[0]?.count || 0;
-  const blockedCount = stats?.blocked?.[0]?.count || 0;
-  const criticalCount = stats?.bySeverity?.find(s => s._id === 'critical')?.count || 0;
-  const highCount = stats?.bySeverity?.find(s => s._id === 'high')?.count || 0;
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">📋 Security Events</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-green-400 text-sm animate-pulse">● LIVE</span>
-            {lastUpdate && <span className="text-gray-500 text-xs">Updated {lastUpdate.toLocaleTimeString()}</span>}
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
-            <h3 className="text-gray-400 text-sm">Total Events</h3>
-            <p className="text-3xl font-bold">{totalEvents}</p>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-5 border border-red-900">
-            <h3 className="text-gray-400 text-sm">🔴 Critical</h3>
-            <p className="text-3xl font-bold text-red-500">{criticalCount}</p>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-5 border border-orange-900">
-            <h3 className="text-gray-400 text-sm">🟠 High</h3>
-            <p className="text-3xl font-bold text-orange-500">{highCount}</p>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-5 border border-green-900">
-            <h3 className="text-gray-400 text-sm">🚫 Blocked</h3>
-            <p className="text-3xl font-bold text-green-500">{blockedCount}</p>
+      <div className="main-content">
+        <div className="page-header">
+          <h1>
+            <span style={{
+              width: 28, height: 28, borderRadius: 6,
+              background: 'rgba(255, 23, 68, 0.1)',
+              border: '1px solid rgba(255, 23, 68, 0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: 'var(--accent-red)',
+            }}>E</span>
+            Security Event Log
+          </h1>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
+            {events.length} events recorded
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-4 mb-6">
-          <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}
-            className="px-4 py-2 rounded bg-gray-800 text-white border border-gray-600 focus:border-blue-500 focus:outline-none">
+        <div style={{
+          display: 'flex', gap: 10, marginBottom: 20, padding: '12px 16px',
+          background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 6,
+        }}>
+          <select className="input-field" style={{ width: 160 }} value={filters.severity}
+            onChange={(e) => setFilters({ ...filters, severity: e.target.value })}>
             <option value="">All Severities</option>
             <option value="critical">Critical</option>
             <option value="high">High</option>
@@ -105,73 +77,163 @@ const Events = () => {
             <option value="low">Low</option>
             <option value="info">Info</option>
           </select>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-            className="px-4 py-2 rounded bg-gray-800 text-white border border-gray-600 focus:border-blue-500 focus:outline-none">
+          <select className="input-field" style={{ width: 180 }} value={filters.eventType}
+            onChange={(e) => setFilters({ ...filters, eventType: e.target.value })}>
             <option value="">All Types</option>
             <option value="sql_injection">SQL Injection</option>
             <option value="xss">XSS</option>
+            <option value="brute_force">Brute Force</option>
             <option value="path_traversal">Path Traversal</option>
             <option value="command_injection">Command Injection</option>
-            <option value="brute_force">Brute Force</option>
             <option value="ddos">DDoS</option>
-            <option value="port_scan">Port Scan</option>
             <option value="malware">Malware</option>
-            <option value="suspicious">Suspicious</option>
             <option value="anomaly">Anomaly</option>
+            <option value="port_scan">Port Scan</option>
+          </select>
+          <select className="input-field" style={{ width: 150 }} value={filters.blocked}
+            onChange={(e) => setFilters({ ...filters, blocked: e.target.value })}>
+            <option value="">All Status</option>
+            <option value="true">Blocked</option>
+            <option value="false">Not Blocked</option>
           </select>
         </div>
 
-        {/* Events Table */}
-        {events.length === 0 ? (
-          <div className="bg-gray-800 rounded-lg p-12 text-center border border-gray-700">
-            <p className="text-gray-400 text-lg mb-2">No security events yet</p>
-            <p className="text-gray-500 text-sm">Install the BlackNode agent on your app to start monitoring</p>
-          </div>
-        ) : (
-          <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-750 border-b border-gray-700">
-                <tr>
-                  <th className="p-4 text-gray-400">Type</th>
-                  <th className="p-4 text-gray-400">Severity</th>
-                  <th className="p-4 text-gray-400">Description</th>
-                  <th className="p-4 text-gray-400">Source IP</th>
-                  <th className="p-4 text-gray-400">Path</th>
-                  <th className="p-4 text-gray-400">Score</th>
-                  <th className="p-4 text-gray-400">Status</th>
-                  <th className="p-4 text-gray-400">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map(event => (
-                  <tr key={event._id} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition">
-                    <td className="p-4">
-                      <span className="mr-2">{getTypeIcon(event.eventType)}</span>
-                      <span className="font-mono text-xs">{event.eventType?.replace(/_/g, ' ')}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded text-xs font-medium border ${getSeverityColor(event.severity)}`}>
-                        {event.severity}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-300 max-w-xs truncate">{event.description || '-'}</td>
-                    <td className="p-4 font-mono text-xs text-gray-400">{event.source?.ip || 'N/A'}</td>
-                    <td className="p-4 font-mono text-xs text-gray-400 max-w-[150px] truncate">{event.source?.path || 'N/A'}</td>
-                    <td className="p-4 text-xs">{event.mlScore ? (event.mlScore * 100).toFixed(0) + '%' : '-'}</td>
-                    <td className="p-4">
-                      {event.blocked ? (
-                        <span className="text-red-400 font-medium">🛑 Blocked</span>
-                      ) : (
-                        <span className="text-yellow-400">📝 Logged</span>
-                      )}
-                    </td>
-                    <td className="p-4 text-gray-500 text-xs whitespace-nowrap">{new Date(event.createdAt).toLocaleString()}</td>
+        {/* Table */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+              <div className="spinner" />
+            </div>
+          ) : events.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: 'var(--text-muted)' }}>
+                No events match current filters
+              </div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Severity</th>
+                    <th>Type</th>
+                    <th>Source IP</th>
+                    <th>Method</th>
+                    <th>Path</th>
+                    <th>Application</th>
+                    <th>Blocked</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {events.map((event, i) => (
+                    <React.Fragment key={event._id || i}>
+                      <tr className={getRowClass(event.severity)}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setExpandedEvent(expandedEvent === event._id ? null : event._id)}>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {formatTime(event.createdAt)}
+                        </td>
+                        <td>
+                          <span className={`badge badge-${event.severity}`}>{event.severity}</span>
+                        </td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-primary)', textTransform: 'uppercase' }}>
+                          {event.eventType?.replace(/_/g, ' ')}
+                        </td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+                          {event.source?.ip || 'N/A'}
+                        </td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>
+                          {event.source?.method || 'N/A'}
+                        </td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {event.source?.path || 'N/A'}
+                        </td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-secondary)' }}>
+                          {event.application?.name || 'N/A'}
+                        </td>
+                        <td>
+                          {event.blocked ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <div className="status-dot online" />
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--accent-green)' }}>BLOCKED</span>
+                            </span>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <div className="status-dot warning" />
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--accent-orange)' }}>LOGGED</span>
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
+                          {expandedEvent === event._id ? '[-]' : '[+]'}
+                        </td>
+                      </tr>
+                      {expandedEvent === event._id && (
+                        <tr>
+                          <td colSpan={9} style={{ padding: 0 }}>
+                            <div style={{
+                              padding: 16, background: 'var(--bg-primary)',
+                              borderTop: '1px solid var(--border-primary)',
+                            }}>
+                              <div className="grid-2" style={{ gap: 16 }}>
+                                <div>
+                                  <div style={{
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+                                    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+                                  }}>DESCRIPTION</div>
+                                  <div style={{
+                                    fontFamily: "'Inter', sans-serif",
+                                    fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
+                                  }}>{event.description || 'No description available'}</div>
+                                </div>
+                                <div>
+                                  <div style={{
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+                                    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+                                  }}>PAYLOAD</div>
+                                  {event.payload ? (
+                                    <div style={{
+                                      fontFamily: "'JetBrains Mono', monospace",
+                                      fontSize: 11, color: 'var(--accent-red)',
+                                      padding: 10, background: 'var(--bg-secondary)',
+                                      border: '1px solid var(--border-primary)', borderRadius: 4,
+                                      wordBreak: 'break-all',
+                                    }}>
+                                      <div>Parameter: <span style={{ color: 'var(--text-primary)' }}>{event.payload.parameter}</span></div>
+                                      <div style={{ marginTop: 4 }}>Value: <span style={{ color: 'var(--text-secondary)' }}>{event.payload.value}</span></div>
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--text-muted)' }}>
+                                      No payload captured
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{ marginTop: 12, display: 'flex', gap: 16 }}>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
+                                  USER AGENT: <span style={{ color: 'var(--text-secondary)' }}>{event.source?.userAgent || 'N/A'}</span>
+                                </div>
+                                {event.mlScore && (
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)' }}>
+                                    ML CONFIDENCE: <span style={{ color: 'var(--accent-cyan)' }}>{(event.mlScore * 100).toFixed(1)}%</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
