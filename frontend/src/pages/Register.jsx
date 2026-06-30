@@ -45,18 +45,9 @@ const Register = () => {
     }
 
     setLoading(true);
-    try {
-      await register(username, email, password);
-      anime({
-        targets: containerRef.current,
-        opacity: [1, 0],
-        scale: [1, 0.98],
-        duration: 250,
-        easing: 'easeInCubic',
-        complete: () => navigate('/dashboard'),
-      });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+    const result = await register({ username, email, password });
+    if (!result.success) {
+      setError(result.error || 'Registration failed');
       setLoading(false);
       anime({
         targets: formRef.current,
@@ -64,7 +55,16 @@ const Register = () => {
         duration: 400,
         easing: 'easeInOutCubic',
       });
+      return;
     }
+    anime({
+      targets: containerRef.current,
+      opacity: [1, 0],
+      scale: [1, 0.98],
+      duration: 250,
+      easing: 'easeInCubic',
+      complete: () => navigate('/dashboard'),
+    });
   };
 
   return (

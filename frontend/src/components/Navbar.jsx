@@ -2,7 +2,8 @@
  * BlackNode Sentinel — Navigation Sidebar
  */
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 const links = [
   { to: '/dashboard', label: 'DASHBOARD', abbr: 'D' },
@@ -15,6 +16,13 @@ const links = [
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout, user } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div style={{
@@ -80,10 +88,36 @@ export default function Navbar() {
 
       {/* Footer */}
       <div style={{ padding: '12px 16px', borderTop: '1px solid #1e293b' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
           <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.05em' }}>SYSTEM OPERATIONAL</span>
         </div>
+        {user && (
+          <div style={{ fontSize: 10, color: '#475569', fontFamily: 'JetBrains Mono, monospace', marginBottom: 8, letterSpacing: '0.05em' }}>
+            {user.email || user.username}
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          style={{
+            width: '100%',
+            padding: '8px 0',
+            background: 'transparent',
+            border: '1px solid #ef444440',
+            borderRadius: 4,
+            color: '#ef4444',
+            fontSize: 10,
+            fontFamily: 'JetBrains Mono, monospace',
+            letterSpacing: '0.1em',
+            cursor: 'pointer',
+            fontWeight: 600,
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#ef444415'; e.currentTarget.style.borderColor = '#ef4444'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#ef444440'; }}
+        >
+          LOGOUT
+        </button>
       </div>
     </div>
   );

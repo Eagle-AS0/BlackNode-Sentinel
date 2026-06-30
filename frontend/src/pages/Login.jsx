@@ -43,18 +43,9 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    try {
-      await login(email, password);
-      anime({
-        targets: containerRef.current,
-        opacity: [1, 0],
-        scale: [1, 0.98],
-        duration: 250,
-        easing: 'easeInCubic',
-        complete: () => navigate('/dashboard'),
-      });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed');
+    const result = await login(email, password);
+    if (!result.success) {
+      setError(result.error || 'Authentication failed');
       setLoading(false);
       anime({
         targets: formRef.current,
@@ -62,7 +53,16 @@ const Login = () => {
         duration: 400,
         easing: 'easeInOutCubic',
       });
+      return;
     }
+    anime({
+      targets: containerRef.current,
+      opacity: [1, 0],
+      scale: [1, 0.98],
+      duration: 250,
+      easing: 'easeInCubic',
+      complete: () => navigate('/dashboard'),
+    });
   };
 
   return (
