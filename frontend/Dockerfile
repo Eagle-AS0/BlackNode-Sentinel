@@ -11,7 +11,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies
-RUN npm ci
+RUN npm install
 
 # Build argument for API URL (injected at build time)
 ARG REACT_APP_API_URL=/api
