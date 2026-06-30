@@ -9,14 +9,39 @@ Monitor, detect, and block cyber threats across your web applications in real-ti
 ## Quick Start
 
 ```bash
-bash run.sh
+git clone https://github.com/Eagle-AS0/BlackNode-Sentinel.git
+cd BlackNode-Sentinel
+cp .env.example .env
+docker-compose up --build -d
 ```
 
-That's it. Opens at **http://localhost:3000**
+Opens at **http://localhost:3000**
 
 **Login:**
 - Email: `admin@blacknode.io`
 - Password: `BlackNode2025!`
+
+---
+
+## Screenshots
+
+### Dashboard
+![Dashboard](screenshots/Dashnord.png)
+
+### Applications
+![Applications](screenshots/application.png)
+
+### Events
+![Events](screenshots/event.png)
+
+### Threat Intelligence
+![Threat Intelligence](screenshots/threat.png)
+
+### Network
+![Network](screenshots/network.png)
+
+### Settings
+![Settings](screenshots/setting.png)
 
 ---
 
@@ -29,11 +54,11 @@ BlackNode Sentinel is a RASP (Runtime Application Protection) platform. It watch
 | Page | What It Shows |
 |------|--------------|
 | **Dashboard** | Threat overview — severity charts, attack vectors, recent events |
-| **Applications** | 10 monitored enterprise apps (Google, Facebook, Amazon, Netflix, etc.) |
-| **Events** | 38 security events with forensic detail — payloads, IPs, ML scores |
-| **Threat Intel** | 15 CVEs (CVSS 7.5-10.0) + 10 OTX threat feeds (APT29, LockBit, Lazarus) |
-| **Network** | 10 infrastructure nodes with CPU, memory, throughput, uptime |
-| **Settings** | Detection engine toggles, OTX config, alert email, API keys |
+| **Applications** | Monitored enterprise apps with agent install + add new app |
+| **Events** | Security events with forensic detail — payloads, IPs, ML scores |
+| **Threat Intel** | CVEs + OTX threat feeds — add new CVE or pulse from the UI |
+| **Network** | Infrastructure nodes with CPU, memory, throughput, uptime |
+| **Settings** | Detection engine toggles, OTX config, alert email, API keys, logout |
 
 ### Monitored Companies
 
