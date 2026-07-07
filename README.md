@@ -123,15 +123,28 @@ Navigate to the Applications page, click "Install Agent", and copy the code.
 ## Architecture
 
 ```
-[Your App] ──agent──> [BlackNode Backend] ──> [Dashboard]
-                           │
-                      [MongoDB]
+                    +-----------------+
+                    |   Dashboard     |
+                    |  (React SPA)    |
+                    +--------+--------+
+                             |
+                    +--------v--------+
+[Your App] --agent--> | BlackNode      | --> [MongoDB]
+   |                  | Backend (API)  |       |
+   |                  | Port 5004      |   [Events]
+   |                  +--------+-------+   [Apps]
+   |                           |
+   |                  +--------v--------+
+   +-- HTTP traffic->| blacknode-agent |
+                     | (npm middleware) |
+                     +-----------------+
 ```
 
-- **Agent** — Express middleware that intercepts and inspects all HTTP requests
-- **Backend** — Node.js API with threat detection, event logging, ML scoring
-- **Frontend** — React SPA with professional cybersecurity UI
-- **MongoDB** — Event storage and application registry
+- **Agent** (`blacknode-agent`) — Express middleware that intercepts and inspects all HTTP requests in real-time. Detects SQLi, XSS, brute force, command injection, path traversal, and DDoS patterns.
+- **Backend** — Node.js/Express API with threat detection engine, event logging, ML-based scoring via Python FastAPI engine, and Socket.IO for live updates.
+- **Frontend** — React SPA with dark cybersecurity theme, Recharts visualizations, and real-time event streaming.
+- **MongoDB** — Stores security events, application registry, CVE data, and OTX threat intelligence feeds.
+- **ML Engine** — Python/FastAPI service for anomaly detection and risk scoring of incoming traffic patterns.
 
 ---
 
