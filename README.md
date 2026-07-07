@@ -1,5 +1,10 @@
 # BlackNode Sentinel
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Security: RASP](https://img.shields.io/badge/Security-RASP-blue.svg)](https://github.com/Eagle-AS0/BlackNode-Sentinel)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker)](https://www.docker.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933.svg?logo=node.js)](https://nodejs.org/)
+
 **Runtime Application Security Operations Center**
 
 Monitor, detect, and block cyber threats across your web applications in real-time.
@@ -152,6 +157,18 @@ docker-compose up --build -d
 - **Database:** MongoDB 7
 - **Deployment:** Docker Compose, Nginx
 - **Theme:** Professional cybersecurity dark UI
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a PR.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feat/my-feature`)
+3. Commit your changes (`git commit -m 'feat: add my feature'`)
+4. Push to the branch (`git push origin feat/my-feature`)
+5. Open a Pull Request
 
 ---
 
